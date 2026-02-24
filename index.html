@@ -882,8 +882,16 @@ async function showResult() {
 
   if (useDB) {
     try {
-      await sbClient.from('employee_quiz_results').insert({ name: userName, score, total: questions.length, created_at: new Date().toISOString() });
-    } catch(e) {}
+      const pctVal = Math.round((score / questions.length) * 100);
+      const { error: insertError } = await sbClient.from('employee_quiz_results').insert({
+        name: userName,
+        correct: score,
+        total: questions.length,
+        percentage: pctVal
+      });
+      if (insertError) console.error('Insert error:', insertError);
+      else console.log('✅ Saved to DB');
+    } catch(e) { console.error('DB error:', e); }
   } else {
     const results = JSON.parse(localStorage.getItem('employee_quiz_results') || '[]');
     results.push({ name: userName, score, total: questions.length, created_at: new Date().toISOString() });
@@ -904,12 +912,12 @@ async function loadLeaderboard() {
 
   if (useDB) {
     try {
-      const { data, error } = await sbClient.from('employee_quiz_results').select('*').order('score', { ascending: false }).order('created_at', { ascending: true });
+      const { data, error } = await sbClient.from('employee_quiz_results').select('*').order('correct', { ascending: false }).order('created_at', { ascending: true });
       if (!error) results = data || [];
     } catch(e) {}
   } else {
     results = JSON.parse(localStorage.getItem('employee_quiz_results') || '[]');
-    results.sort((a,b) => b.score - a.score || new Date(a.created_at) - new Date(b.created_at));
+    results.sort((a,b) => b.correct - a.correct || new Date(a.created_at) - new Date(b.created_at));
   }
 
   if (results.length === 0) {
@@ -933,8 +941,8 @@ async function loadLeaderboard() {
               <div style="font-size:0.72rem;color:var(--text-light);margin-top:2px;">🕐 ${formatDate(r.created_at)}</div>
             </td>
             <td>
-              <span class="score-text" style="color:${r.score===10?'var(--red-dark)':r.score>=7?'#27AE60':'var(--text-light)'};">${r.score} / ${r.total}</span>
-              <span class="stars-cell">${starsHtml(r.score)}</span>
+              <span class="score-text" style="color:${r.correct===20?'var(--red-dark)':r.correct>=14?'#27AE60':'var(--text-light)'};">${r.correct} / ${r.total}</span>
+              <span class="stars-cell">${starsHtml(r.correct)}</span>
             </td>
           </tr>
         `).join('')}
